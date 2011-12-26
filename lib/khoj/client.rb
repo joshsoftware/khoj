@@ -4,6 +4,7 @@ module Khoj
 
     DEFAULT_DOC_TYPE  = 'default'
     DEFAULT_DOC_FIELD = 'text'
+    DEFAULT_SEARCH_LIMIT = 10
 
     attr_accessor :index
     attr_reader   :_index
@@ -50,14 +51,12 @@ module Khoj
     def search(query, options = {})
       options[:field] ||= DEFAULT_DOC_FIELD
       search_uri = options[:type] ? "#{options[:type]}/_search" : '_search'
-
-      query = {:query => 
+      q = {:query => 
                 {:term => { options[:field] => query}}
-              }
-      query[:query][:fields] ||= ['_id' , '_type']
-
-      response = @conn.get("/#{_index}/#{search_uri}", :body => query.to_json)
-
+           }
+      q[:query][:fields] ||= ['_id' , '_type']
+      q[:query][:size] ||= (options[:size] ? (options[:size] > 10 ? DEFAULT_SEARCH_LIMIT : options[:size]) : DEFAULT_SEARCH_LIMIT)
+      response = @conn.get("/#{_index}/#{search_uri}", :body => q.to_json)
       case response.code
       when 200
         response.parsed_response

@@ -16,26 +16,32 @@ class ClientTest < ActiveSupport::TestCase
 
   def teardown
      @client.delete('test:1') rescue ''
+     @client.delete('test:2') rescue ''
+     @client.delete('test:3') rescue ''
      @client.delete('1') rescue ''
   end
 
   test 'should be able to add document' do
     response = @client.add('test:1', @document)
+    sleep(1)
     assert_equal true, response
   end
 
   test 'should be able to add document to default document type' do
     response = @client.add('1', @document) # like doc id 'default:1'
+    sleep(1)
     assert_equal true, response
   end
 
   test 'should be able to add document with default text field if string is input' do
     response = @client.add('1', 'test for default text field')
+    sleep(1)
     assert_equal true, response
   end
 
   test 'should be able to retrive docuemt' do
     @client.add('test:1', @document)
+    sleep(1)
     response = @client.get('test:1')
 
     assert_equal true, response['exists']
@@ -44,6 +50,7 @@ class ClientTest < ActiveSupport::TestCase
   # default:1 : type => default, id => 1 
   test 'should be able to retrive default type document' do
     @client.add('1', @document)
+    sleep(1)
     response = @client.get('1')
 
     assert_equal true, response['exists']
@@ -52,12 +59,14 @@ class ClientTest < ActiveSupport::TestCase
 
   test 'should be able to delete document' do
     @client.add('test:1', @document)
+    sleep(1)
     response = @client.delete('test:1')
     assert_equal true, response
   end
 
   test 'should be able to delete default type document' do
     @client.add('1', @document)
+    sleep(1)
     response = @client.delete('1')
     assert_equal true, response
   end
@@ -75,6 +84,7 @@ class ClientTest < ActiveSupport::TestCase
   test 'should be able to search document using field name' do
     @client.delete('test:2') rescue ''
     @client.add('test:2', {:test => 'test2'})
+    sleep(1)
 
     response = @client.search('test2', {:field => 'test'})
     assert_equal 1, response['hits']['total'] 
@@ -83,8 +93,44 @@ class ClientTest < ActiveSupport::TestCase
   test 'should be able to search document by type' do
     @client.delete('test:3') rescue ''
     @client.add('test:3', {:test => 'test3'})
+    sleep(1)
 
     response = @client.search('test3', {:field => 'test', :type => 'test'})
     assert_equal 1, response['hits']['total'] 
   end
+
+  #size
+  test 'should be able to search number of records as size is specified, 10 by default' do
+    15.times do |i|
+      @client.add("test:#{i+1}",  'test application')
+    end
+    sleep(1)
+    response = @client.search('test', :size => 0)
+    assert_equal 0, response['hits']['hits'].count
+
+    response = @client.search('test', :size => 5)
+    assert_equal 5, response['hits']['hits'].count 
+
+    response = @client.search('test')
+    assert_equal 10, response['hits']['hits'].count 
+
+    response = @client.search('test', :size => 15)
+    assert_equal 10, response['hits']['hits'].count 
+
+    6.times do |i|
+      @client.delete("test:#{i+1}") rescue ''
+    end
+    sleep(1)
+
+    response = @client.search('test')
+    assert_equal 9, response['hits']['hits'].count
+
+    response = @client.search('test', :size => 10)
+    assert_equal 9, response['hits']['hits'].count 
+
+    15.times do |i|
+      @client.delete("test:#{i+1}") rescue ''
+    end
+  end
+   
 end
