@@ -67,7 +67,15 @@ module Khoj
         # TODO : implement functionality for fetch action if specified by user to fetch fields from result set
         q = get_string_query(query, options)
       end
+      
+      facet_filter = options[:category_filter]
+      unless facet_filter == nil
+        facet_field = facet_filter.keys.first.to_s
+        q.merge!(:facets => {facet_field => {:terms => {:field => facet_field}, :facet_filter => {:term => facet_filter}}}) 
+      end
+
       response = @conn.get("/#{_index}/#{search_uri}", :body => q.to_json)
+
       case response.code
       when 200
         response.parsed_response
