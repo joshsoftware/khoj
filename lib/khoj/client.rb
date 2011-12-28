@@ -9,6 +9,9 @@ module Khoj
     attr_accessor :index
     attr_reader   :_index
 
+    #alias_method :update_categories, :add
+
+
     def initialize(index)
       @index = index
       @_index = "#{Configuration.api_key}-#{index}"
@@ -51,6 +54,10 @@ module Khoj
     def search(query, options = {})
       search_uri = options[:type] ? "#{options[:type]}/_search" : '_search'
       
+      q = {:query => 
+                {:term => { options[:field] => query}}
+      }
+      
       # check that if search string contains AND, OR or NOT in query
       # if it is then we will execute String query of Query DSL
       # else we will execute normal search query
@@ -68,12 +75,19 @@ module Khoj
         q = get_string_query(query, options)
       end
       
-      facet_filter = options[:category_filter]
-      unless facet_filter == nil
-        facet_field = facet_filter.keys.first.to_s
-        q.merge!(:facets => {facet_field => {:terms => {:field => facet_field}, :facet_filter => {:term => facet_filter}}}) 
+      if category_filter = options[:category_filter]
+        q[:facets] = {}
+        q[:filter] = {:term => {}}
+        category_filter.keys.each do |key|
+          q[:facets][key.to_s] = {:terms => {:field => key.to_s}, :facet_filter => {:term => {key => category_filter[key]}}}
+          q[:filter][:term].merge!({key => category_filter[key]}) 
+        end
       end
-
+      
+      #q[:query][:fields] ||= ['_id' , '_type']
+      q[:size] ||= (options[:size] ? (options[:size] > 10 ? DEFAULT_SEARCH_LIMIT : options[:size]) : DEFAULT_SEARCH_LIMIT)
+      q[:query] = q[:query].merge(:script_fields => { "#{options[:fetch]}" => { :script => "_source.#{options[:fetch]}"}}) if options[:fetch]
+      
       response = @conn.get("/#{_index}/#{search_uri}", :body => q.to_json)
 
       case response.code

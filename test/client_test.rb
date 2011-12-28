@@ -97,6 +97,7 @@ class ClientTest < ActiveSupport::TestCase
     assert_equal 1, response['hits']['total'] 
   end
 
+<<<<<<< Updated upstream
   #size
   test 'should be able to search number of records as size is specified, 10 by default' do
     15.times do |i|
