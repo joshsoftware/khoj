@@ -82,7 +82,6 @@ class ClientTest < ActiveSupport::TestCase
   end
 
   test 'should be able to search document using field name' do
-    @client.delete('test:2') rescue ''
     @client.add('test:2', {:test => 'test2'})
     sleep(1)
 
@@ -91,7 +90,6 @@ class ClientTest < ActiveSupport::TestCase
   end
 
   test 'should be able to search document by type' do
-    @client.delete('test:3') rescue ''
     @client.add('test:3', {:test => 'test3'})
     sleep(1)
 
@@ -132,5 +130,65 @@ class ClientTest < ActiveSupport::TestCase
       @client.delete("test:#{i+1}") rescue ''
     end
   end
-   
+  
+  test 'should fetch specified field from documents from which search match is found, if not present then should return nil' do
+    field = 'designation'
+    designation = 'Software Engineer'
+  
+    # matching text 'software' with designation
+    @client.add('test:1', :text => 'I am a software engineer', :location => 'Pune', :designation => designation)
+  
+    # matching text without designation
+    @client.add('test:2', :text => 'I am a freelancer who developes software', :location => 'Mumbai')
+  
+    #unmatching text with designation
+    @client.add('test:3', :text => 'I do marketing of products', :location => 'Delhi', :designation => 'Marketing Executive')
+    sleep(1)
+  
+    response = @client.search('software', :fetch=> field)
+
+    ids = [] # ids array will contain ids of documents 
+    fields = []  # fields array will contain fetched fields, each field is in key => value format such as "fields"=>{"designation"=>"Software Engineer"}
+    field_values = [] # fields_values will contain values of fetched fields such as 'Software Engineer','Marketing Executive',nil etc.
+
+    # Data received in json format is,
+    # {
+    #   "took"=>5, "timed_out"=>false, "_shards"=>{"total"=>5, "successful"=>5, "failed"=>0}, 
+    #   "hits"=>{"total"=>2, "max_score"=>0.15342641, 
+    #            "hits"=>[
+    #                     {"_index"=>"test-api-key-test", "_type"=>"test", "_id"=>"1", "_score"=>0.15342641, "fields"=>{"designation"=>"Software Engineer"}}, 
+    #                     {"_index"=>"test-api-key-test", "_type"=>"test", "_id"=>"2", "_score"=>0.11506981, "fields"=>{"designation"=>nil}}
+    #                    ]
+    #           }
+    # }
+
+    response['hits']['hits'].each do |i|
+      ids << i['_id']
+      fields << i['fields']
+      field_values << i['fields'].values
+    end
+    field_values.flatten!
+    # as per data entered, hits should be 2 as word 'software' is in only 2 documents
+    assert_equal 2, response['hits']['total']
+
+    # fields array should contain uniq element as only one field is fetched  
+    assert_equal 1, fields.collect(&:keys).flatten.uniq.count
+
+    # key of every element in fields array should be 'designation'
+    assert_equal field, fields.collect(&:keys).flatten.uniq.first
+
+    # ids array should contain 1 and 2, not 3
+    assert_equal true, ids.include?('1')
+    assert_equal true, ids.include?('2')
+    assert_equal false, ids.include?('3')
+
+    # Designation value should be 
+    # software enginner for document test:1 and nil for test:2
+    # it should not contain value as Marketing Executive
+    assert_equal true, field_values.include?(designation)
+    assert_equal true, field_values.include?(nil)
+    assert_equal false, field_values.include?('Marketing Executive')
+
+  end
+
 end

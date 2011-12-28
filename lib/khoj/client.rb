@@ -56,6 +56,7 @@ module Khoj
            }
       q[:query][:fields] ||= ['_id' , '_type']
       q[:query][:size] ||= (options[:size] ? (options[:size] > 10 ? DEFAULT_SEARCH_LIMIT : options[:size]) : DEFAULT_SEARCH_LIMIT)
+      q[:query] = q[:query].merge(:script_fields => { "#{options[:fetch]}" => { :script => "_source.#{options[:fetch]}"}}) if options[:fetch]
       response = @conn.get("/#{_index}/#{search_uri}", :body => q.to_json)
       case response.code
       when 200
@@ -64,7 +65,6 @@ module Khoj
         nil
       end
     end
-
 
     private
     def resource_type(resource_id)
