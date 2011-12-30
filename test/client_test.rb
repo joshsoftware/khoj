@@ -15,10 +15,10 @@ class ClientTest < ActiveSupport::TestCase
   end
 
   def teardown
-     @client.delete('test:1') rescue ''
-     @client.delete('test:2') rescue ''
-     @client.delete('test:3') rescue ''
-     @client.delete('1') rescue ''
+    @client.delete('1') rescue ''
+    5.times do |i|
+      @client.delete("test:#{i+1}") rescue ''
+    end
   end
 
   test 'should be able to add document' do
@@ -191,4 +191,57 @@ class ClientTest < ActiveSupport::TestCase
 
   end
 
+  test 'should perofrm search operation using operators[AND/OR/NOT], when no field specified, default is all fields' do
+    add_data_with_multiple_fields
+
+    # Search data with operators using no fields specified 
+    response = @client.search('marketing OR tester')
+    ids = get_ids_from_response(response)
+    assert_equal 2, ids.size
+    assert_equal true, ids.include?('3')
+    assert_equal true, ids.include?('4')
+  end
+
+  test 'should perofrm operations using operators, when single field is specified' do
+    add_data_with_multiple_fields
+    # Search data with operators and within single field
+    response = @client.search('delhi OR mumbai', :fields => "location")
+    ids = get_ids_from_response(response)
+    assert_equal 2, response['hits']['total']
+    assert_equal true, ids.include?('2')
+    assert_equal true, ids.include?('3')
+    
+    response = @client.search('tester OR pune', :fields => "text")
+    assert_equal 0, response['hits']['total']
+  end
+
+  test 'should perofrm operations using operators, when multiple fields are specified' do
+    add_data_with_multiple_fields
+    # Search data with operators and with multiple fields
+    response = @client.search('software AND mumbai', :fields => "designation, location")
+    assert_equal 1, response['hits']['total']
+    assert_equal '2', response['hits']['hits'].first['_id']
+
+    response = @client.search('software OR pune NOT tester NOT manager NOT mumbai', :fields => "designation, location")
+    assert_equal 1, response['hits']['total']
+    assert_equal '1', response['hits']['hits'].first['_id']
+  end
+
+  def add_data_with_multiple_fields
+    # While changig data in this method make sure to do changed in all respective places as the data fields are used for validation of test cases
+    @client.add('test:1', :text => 'I am a software engineer', :location => 'Pune', :designation => 'Software engineer')
+    @client.add('test:2', :text => 'I am a freelancer who developes software', :location => 'Mumbai', :designation => 'Senior Software Engineer')
+    @client.add('test:3', :text => 'I do marketing of products', :location => 'Delhi', :designation => 'Marketing Executive')
+    @client.add('test:4', :text => 'I test the product', :location => 'Pune, University Road', :designation => 'Tester')
+    @client.add('test:5', :text => 'I manage the company', :location => 'Pune, Shivajinagar', :designation => 'Manager')
+    sleep(1)
+  end
+
+  def get_ids_from_response(response)
+    ids = []
+    response['hits']['hits'].each do |i|
+      ids << i['_id']
+    end
+    return ids
+  end
 end
