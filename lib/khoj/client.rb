@@ -5,6 +5,7 @@ module Khoj
     DEFAULT_DOC_TYPE  = 'default'
     DEFAULT_DOC_FIELD = 'text'
     DEFAULT_SEARCH_LIMIT = 10
+    DEFAULT_ORDER = 'asc'
 
     attr_accessor :index
     attr_reader   :_index
@@ -52,22 +53,20 @@ module Khoj
     end
 
     def search(query, options = {})
-      search_uri = options[:type] ? "#{options[:type]}/_search" : '_search'
-      
-      q = {:query => 
-                {:term => { options[:field] => query}}
-      }
+      search_uri = options[:type] ? "#{options[:type]}/_search?pretty=true" : '_search?pretty=true'
       
       # check that if search string contains AND, OR or NOT in query
       # if it is then we will execute String query of Query DSL
       # else we will execute normal search query
       if query.scan(/\sAND|NOT|OR+\s/).empty?
+        
         options[:field] ||= DEFAULT_DOC_FIELD
         q = {:query => 
           {:term => { options[:field] => query}}
         }
-        q[:query][:fields] ||= ['_id' , '_type']
-        q[:query][:size] ||= (options[:size] ? (options[:size] > 10 ? DEFAULT_SEARCH_LIMIT : options[:size]) : DEFAULT_SEARCH_LIMIT)
+        
+        #q[:query][:fields] ||= ['_id' , '_type']
+        q[:size] ||= (options[:size] ? (options[:size] > 10 ? DEFAULT_SEARCH_LIMIT : options[:size]) : DEFAULT_SEARCH_LIMIT) if options[:size]
         q[:query] = q[:query].merge(:script_fields => { "#{options[:fetch]}" => { :script => "_source.#{options[:fetch]}"}}) if options[:fetch]
       else
         
@@ -83,10 +82,14 @@ module Khoj
           q[:filter][:term].merge!({key => category_filter[key]}) 
         end
       end
-      
-      #q[:query][:fields] ||= ['_id' , '_type']
-      q[:size] ||= (options[:size] ? (options[:size] > 10 ? DEFAULT_SEARCH_LIMIT : options[:size]) : DEFAULT_SEARCH_LIMIT)
-      q[:query] = q[:query].merge(:script_fields => { "#{options[:fetch]}" => { :script => "_source.#{options[:fetch]}"}}) if options[:fetch]
+
+      #Check if sorting function is specified in the query.
+      #index.search 'test', :function => {:cordinates => "00,00", :order => 'desc'}
+      if function = options[:function]
+        if function[:name] == 'geo_location'
+          q["sort"] = [{ "_geo_distance" =>  { "location" => "#{function[:cordinates]}", "order" => "#{function[:order] || DEFAULT_ORDER}", "unit" => "km" }}]
+        end
+      end
       
       response = @conn.get("/#{_index}/#{search_uri}", :body => q.to_json)
 
@@ -106,11 +109,11 @@ module Khoj
 
     def get_string_query(query, options)
       q = {:query => 
-                {:query_string => { 
-                                  :query => query
-                                  }
-                }
-           }
+        {:query_string => { 
+          :query => query
+        }
+        }
+      }
 
       # while using string query default field in elastic search is _all 
       # if user specify fields then

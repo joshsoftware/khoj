@@ -5,6 +5,7 @@ require 'khoj/version'
 require 'khoj/configuration'
 require 'khoj/index'
 require 'khoj/client'
+require 'khoj/function'
 
 module Khoj
 
@@ -36,5 +37,13 @@ module Khoj
   def self.client(index)
     @@clients[index] ||= Client.new(index)
   end
+
+  @@functions = {}
+  
+  def self.function(index)
+    @@functions[index] ||= Function.new(index)
+  end
+
+
 
 end
