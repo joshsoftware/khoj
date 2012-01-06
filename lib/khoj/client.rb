@@ -48,6 +48,8 @@ module Khoj
     end
 
     def delete(resource_id)
+      id, resource_name =  resource_id.to_s.split(':').reverse
+      resource_type =  resource_name == nil ? [id] : [resource_name || DEFAULT_DOC_TYPE, id]
       response = @conn.delete("/#{_index}/#{resource_type(resource_id).join('/')}")
       response.code == 200
     end
@@ -85,9 +87,15 @@ module Khoj
 
       #Check if sorting function is specified in the query.
       #index.search 'test', :function => {:cordinates => "00,00", :order => 'desc'}
-      if function = options[:function]
-        if function[:name] == 'geo_location'
-          q["sort"] = [{ "_geo_distance" =>  { "location" => "#{function[:cordinates]}", "order" => "#{function[:order] || DEFAULT_ORDER}", "unit" => "km" }}]
+      # "sort" => {:geo_location => {:cordinates => ["xx,yy"]}, :fields => {:price => 'xxx', :tags => 'xxx'}} 
+      if sort = options[:sort]
+        q["sort"] = []
+        sort.keys.each do |key|
+          if  key == :geo_location
+            q["sort"] << { "_geo_distance" =>  { "location" => "#{sort[:geo_location][:cordinates]}", "order" => "#{sort[:geo_location][:order] || DEFAULT_ORDER}", "unit" => "km" }}
+          else
+            q["sort"] << sort[:fields]
+          end
         end
       end
       

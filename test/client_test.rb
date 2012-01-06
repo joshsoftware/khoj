@@ -3,7 +3,7 @@ require 'test_helper'
 class ClientTest < ActiveSupport::TestCase
   def setup
     @api_key = 'test-api-key'
-    @index = 'test'
+    @index = 'test-client'
 
     Khoj.config do |c|
       c.api_key = @api_key
@@ -16,9 +16,7 @@ class ClientTest < ActiveSupport::TestCase
 
   def teardown
     @client.delete('1') rescue ''
-    5.times do |i|
-      @client.delete("test:#{i+1}") rescue ''
-    end
+    @client.delete("test") rescue ''
   end
 
   test 'should be able to add document' do
@@ -75,9 +73,10 @@ class ClientTest < ActiveSupport::TestCase
   test 'should be able to search document using default type and field' do
     @client.delete(100)
     @client.add(100, 'xxx yyy zzz')
-    sleep(1)
+    sleep(2)
 
     response = @client.search('xxx')
+    
     assert_equal 1, response['hits']['total'] 
   end
 
@@ -136,13 +135,13 @@ class ClientTest < ActiveSupport::TestCase
     designation = 'Software Engineer'
   
     # matching text 'software' with designation
-    @client.add('test:1', :text => 'I am a software engineer', :location => 'Pune', :designation => designation)
+    @client.add('test:1', :text => 'I am a software engineer', :city => 'Pune', :designation => designation)
   
     # matching text without designation
-    @client.add('test:2', :text => 'I am a freelancer who developes software', :location => 'Mumbai')
+    @client.add('test:2', :text => 'I am a freelancer who developes software', :city => 'Mumbai')
   
     #unmatching text with designation
-    @client.add('test:3', :text => 'I do marketing of products', :location => 'Delhi', :designation => 'Marketing Executive')
+    @client.add('test:3', :text => 'I do marketing of products', :city => 'Delhi', :designation => 'Marketing Executive')
     sleep(1)
   
     response = @client.search('software', :fetch=> field)
@@ -205,7 +204,7 @@ class ClientTest < ActiveSupport::TestCase
   test 'should perofrm operations using operators, when single field is specified' do
     add_data_with_multiple_fields
     # Search data with operators and within single field
-    response = @client.search('delhi OR mumbai', :fields => "location")
+    response = @client.search('delhi OR mumbai', :fields => "city")
     ids = get_ids_from_response(response)
     assert_equal 2, response['hits']['total']
     assert_equal true, ids.include?('2')
@@ -218,22 +217,22 @@ class ClientTest < ActiveSupport::TestCase
   test 'should perofrm operations using operators, when multiple fields are specified' do
     add_data_with_multiple_fields
     # Search data with operators and with multiple fields
-    response = @client.search('software AND mumbai', :fields => "designation, location")
+    response = @client.search('software AND mumbai', :fields => "designation, city")
     assert_equal 1, response['hits']['total']
     assert_equal '2', response['hits']['hits'].first['_id']
 
-    response = @client.search('software OR pune NOT tester NOT manager NOT mumbai', :fields => "designation, location")
+    response = @client.search('software OR pune NOT tester NOT manager NOT mumbai', :fields => "designation, city")
     assert_equal 1, response['hits']['total']
     assert_equal '1', response['hits']['hits'].first['_id']
   end
 
   def add_data_with_multiple_fields
     # While changig data in this method make sure to do changed in all respective places as the data fields are used for validation of test cases
-    @client.add('test:1', :text => 'I am a software engineer', :location => 'Pune', :designation => 'Software engineer')
-    @client.add('test:2', :text => 'I am a freelancer who developes software', :location => 'Mumbai', :designation => 'Senior Software Engineer')
-    @client.add('test:3', :text => 'I do marketing of products', :location => 'Delhi', :designation => 'Marketing Executive')
-    @client.add('test:4', :text => 'I test the product', :location => 'Pune, University Road', :designation => 'Tester')
-    @client.add('test:5', :text => 'I manage the company', :location => 'Pune, Shivajinagar', :designation => 'Manager')
+    @client.add('test:1', :text => 'I am a software engineer', :city => 'Pune', :designation => 'Software engineer')
+    @client.add('test:2', :text => 'I am a freelancer who developes software', :city => 'Mumbai', :designation => 'Senior Software Engineer')
+    @client.add('test:3', :text => 'I do marketing of products', :city => 'Delhi', :designation => 'Marketing Executive')
+    @client.add('test:4', :text => 'I test the product', :city => 'Pune, University Road', :designation => 'Tester')
+    @client.add('test:5', :text => 'I manage the company', :city => 'Pune, Shivajinagar', :designation => 'Manager')
     sleep(1)
   end
 
