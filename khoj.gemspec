@@ -2,8 +2,9 @@
 require File.expand_path('../lib/khoj/version', __FILE__)
 
 Gem::Specification.new do |gem|
-  gem.authors       = ["Jiren Patel"]
-  gem.email         = ["jiren@joshsoftware.com"]
+  gem.authors       = ["Jiren", "Siva", 'Swapnil', 'Pratik']
+  gem.email         = ["jiren@joshsoftware.com,siva@joshsoftware.com,
+    swapnil@joshsoftware.com,pratik@joshsoftware.com"]
   gem.description   = %q{Elastic search client}
   gem.summary       = %q{Elastic search client}
   gem.homepage      = ""
